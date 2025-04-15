@@ -56,26 +56,30 @@ class SINO(BaseModel, name='SINO'):
         self.projection_channels = projection_channel_ratio * self.hidden_channels
 
         # self.sino_blocks = SIBlocks(in_channels=self.in_channels, out_channels=self.out_channels, num_knots=self.num_knots)
+        # self.sino_blocks = nn.ModuleList([
+        #     SIBlocks(in_channels=self.in_channels, out_channels=self.out_channels, num_knots=self.num_knots)
+        #     for _ in range(self.n_layers)
+        # ])
         self.sino_blocks = nn.ModuleList([
-            SIBlocks(in_channels=self.in_channels, out_channels=self.out_channels, num_knots=self.num_knots)
+            SIBlocks(in_channels=self.lifting_channels, out_channels=self.projection_channels, num_knots=self.num_knots)
             for _ in range(self.n_layers)
         ])
             
         # define lifting and projection networks
         lifting_in_channels = self.in_channels
         self.lifting = ChannelMLP(
-                in_channels=lifting_in_channels+1,
-                out_channels=self.hidden_channels,
-                hidden_channels=self.lifting_channels,
+                in_channels=lifting_in_channels+2,
+                out_channels=self.lifting_channels,
+                hidden_channels=self.lifting_channels * 2,
                 n_layers=2,
                 n_dim=self.n_dim,
                 non_linearity=non_linearity
             )
         
         self.projection = ChannelMLP(
-            in_channels=self.hidden_channels,
-            out_channels=out_channels,
-            hidden_channels=self.projection_channels,
+            in_channels=self.projection_channels,
+            out_channels=self.out_channels,
+            hidden_channels=self.projection_channels * 2,
             n_layers=2,
             n_dim=self.n_dim,
             non_linearity=non_linearity,
@@ -107,7 +111,8 @@ class SINO(BaseModel, name='SINO'):
 
         x = self.lifting(x)
 
-        x = x.view(B, self.hidden_channels, H * W).permute(0, 2, 1)
+        # x = x.view(B, self.hidden_channels, H * W).permute(0, 2, 1)
+        x = x.permute(0, 2, 3, 1).reshape(B, H * W, self.lifting_channels)
 
         # for _ in range(n_layers)
         for i, layer in enumerate(self.sino_blocks):
@@ -117,11 +122,22 @@ class SINO(BaseModel, name='SINO'):
             # for j, l in enumerate(layer.h_net):
                 # if isinstance(l, nn.Linear):
                     # print(f"Layer {j} weights:\n", l.weight.data)
-                
+            layer.plot_and_save_spline(save_path="SPLINE_PLOTS/learned_spline.png")
             x = x + layer(x)
 
-        x = x.permute(0, 2, 1).view(B, self.hidden_channels, H, W)
 
-        x = self.projection(x)
+        # x = x.permute(0, 2, 1).view(B, self.hidden_channels, H, W)
+        # x = x.view(B, H, W, self.projection_channels).permute(0, 3, 1, 2)
+
+        # # x = self.projection(x)
+
+        # x = self.projection(x.permute(0, 2, 3, 1).reshape(B, H, W, self.projection_channels))  # → (B, N, out_channels)
+        # x = x.view(B, H, W, self.out_channels).permute(0, 3, 1, 2)  # → (B, out_channels, H, W)
+
+        x = x.view(B, H, W, self.projection_channels)                # → (B, H, W, C)
+        x = x.permute(0, 3, 1, 2).reshape(B, self.projection_channels, H * W)  # → (B, C, N)
+
+        x = self.projection(x)                                       # projection: (B, C_out, N)
+        x = x.view(B, self.out_channels, H, W)
 
         return x

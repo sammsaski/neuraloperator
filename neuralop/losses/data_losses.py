@@ -423,6 +423,46 @@ class H1Loss(object):
             normalization constant for reduction, by default None
         """
         return self.rel(y_pred, y, quadrature=quadrature)
+    
+
+class SmoothH1Loss(H1Loss):
+    """
+    
+    """
+    def __init__(self, d=1, measure=1., reduction='sum', eps=1e-8, fix_x_bnd=False, fix_y_bnd=False, fix_z_bnd=False, regularization_weight=0.0, regularization_mode="second"):
+        super().__init__(d, measure, reduction, eps, fix_x_bnd, fix_y_bnd, fix_z_bnd)
+        self.regularization_weight = regularization_weight
+        self.regularization_mode = regularization_mode
+
+    def spline_smoothness_loss(self, S_m):
+        if self.regularization_mode == "first":
+            diff = S_m[1:] - S_m[:-1]
+            return (diff**2).mean()
+        elif self.regularization_mode == "second":
+            return ((S_m[2:] - 2 * S_m[1:-1] + S_m[:-2])**2).mean()
+        else:
+            raise ValueError("Unknown regularization mode")
+        
+    def __call__(self, model, y_pred, y, quadrature=None, **kwargs):
+        h1 = super().__call__(y_pred, y, quadrature, **kwargs)
+
+        if self.regularization_weight > 0.0 and model is not None:
+            if hasattr(model, "sino_blocks"):
+                spline_layers = model.sino_blocks
+            elif isinstance(model, (list, tuple)):
+                spline_layers = model
+            else:
+                raise ValueError("Expected model with `sino_blocks` or list-like container.")
+
+            reg_loss = 0.0
+            for layer in spline_layers:
+                reg_loss += self.spline_smoothness_loss(layer.S_m)
+
+            return h1 + self.regularization_weight * reg_loss
+
+        # else
+        return h1
+
 
 class HdivLoss(object):
     """

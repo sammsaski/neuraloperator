@@ -18,7 +18,7 @@ except ModuleNotFoundError:
     wandb_available = False
 
 import neuralop.mpu.comm as comm
-from neuralop.losses import LpLoss
+from neuralop.losses import LpLoss, SmoothH1Loss
 from .training_state import load_training_state, save_training_state
 
 
@@ -265,9 +265,9 @@ class Trainer:
         self.n_samples = 0
 
         for idx, sample in enumerate(train_loader):
-            
             loss = self.train_one_batch(idx, sample, training_loss)
             loss.backward()
+            # print(self.model.sino_blocks[0].S_m.grad) PRINT GRADIENT
             self.optimizer.step()
 
             train_err += loss.item()
@@ -422,7 +422,7 @@ class Trainer:
                 for k, v in sample.items()
                 if torch.is_tensor(v)
             }
-
+        
         if isinstance(sample["y"], torch.Tensor):
             self.n_samples += sample["y"].shape[0]
         else:
@@ -446,7 +446,10 @@ class Trainer:
             with torch.autocast(device_type=self.autocast_device_type):
                 loss += training_loss(out, **sample)
         else:
-            loss += training_loss(out, **sample)
+            if isinstance(training_loss, SmoothH1Loss):
+                loss += training_loss(self.model, out, **sample)
+            else:
+                loss += training_loss(out, **sample)
 
         if self.regularizer:
             loss += self.regularizer.loss
@@ -496,7 +499,10 @@ class Trainer:
         eval_step_losses = {}
 
         for loss_name, loss in eval_losses.items():
-            val_loss = loss(out, **sample)
+            if isinstance(loss, SmoothH1Loss):
+                val_loss = loss(self.model, out, **sample)
+            else:
+                val_loss = loss(out, **sample)
             eval_step_losses[loss_name] = val_loss
         
         if return_output:
