@@ -269,7 +269,7 @@ class Trainer:
         start = time.time()
 
         for idx, sample in enumerate(train_loader):
-            print(idx)
+            # print(idx)
             loss = self.train_one_batch(idx, sample, training_loss)
             # t0 = time.time()
             # print(f'After computing loss: {t0 - start}')

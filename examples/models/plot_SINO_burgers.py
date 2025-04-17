@@ -1,8 +1,8 @@
 """
-Training an FNO on Navier-Stokes
+Training an SINO on Darcy-Flow
 =============================
 
-We train a Fourier Neural Operator on our small `Darcy-Flow example <../auto_examples/plot_darcy_flow.html>`_ .
+We train a Spline-Integral Neural Operator on our small `Darcy-Flow example <../auto_examples/plot_darcy_flow.html>`_ .
 
 Note that this dataset is much smaller than one we would use in practice. The small Darcy-flow is an example built to
 be trained on a CPU in a few seconds, whereas normally we would train on one or multiple GPUs. 
@@ -15,22 +15,23 @@ be trained on a CPU in a few seconds, whereas normally we would train on one or 
 import torch
 import matplotlib.pyplot as plt
 import sys
-from neuralop.models import FNO
+from neuralop.models import SINO
 from neuralop import Trainer
 from neuralop.training import AdamW
-from neuralop.data.datasets import load_navier_stokes_pt
+from neuralop.data.datasets import load_mini_burgers_1dtime
 from neuralop.utils import count_model_params
-from neuralop import LpLoss, H1Loss
+from neuralop import LpLoss, H1Loss, SmoothH1Loss
 
-device = 'cpu'
+device = 'cuda'
 
 
 # %%
 # Let's load the small Darcy-flow dataset. 
-train_loader, test_loaders, data_processor = load_navier_stokes_pt(
-        n_train=1000, batch_size=32, 
-        test_resolutions=[128], n_tests=[200],
-        test_batch_sizes=[32],
+train_loader, test_loaders, data_processor = load_mini_burgers_1dtime(
+        data_path="../../neuralop/data/datasets/data",
+        n_train=1000, n_test=100,
+        batch_size=32, 
+        test_batch_size=32,
 )
 data_processor = data_processor.to(device)
 
@@ -38,11 +39,16 @@ data_processor = data_processor.to(device)
 # %%
 # We create a simple FNO model
 
-model = FNO(n_modes=(64, 64),
-             in_channels=1, 
+# model = SINO(in_channels=2, 
+#              out_channels=1,
+#              hidden_channels=32, 
+#              num_knots=10,
+#              projection_channel_ratio=2)
+model = SINO(in_channels=1, 
              out_channels=1,
-             hidden_channels=64, 
-             projection_channel_ratio=4)
+             hidden_channels=32, 
+             num_knots=128,
+             projection_channel_ratio=2)
 model = model.to(device)
 
 n_params = count_model_params(model)
@@ -64,7 +70,8 @@ scheduler = torch.optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=30)
 # %%
 # Then create the losses
 l2loss = LpLoss(d=2, p=2)
-h1loss = H1Loss(d=2)
+# h1loss = H1Loss(d=2)
+h1loss = SmoothH1Loss(d=2, regularization_weight=1e-1)
 
 train_loss = h1loss
 eval_losses={'h1': h1loss, 'l2': l2loss}
@@ -114,7 +121,7 @@ trainer.train(train_loader=train_loader,
 # a very small number of epochs.
 # In practice, we would train at a larger resolution, on many more samples.
 
-test_samples = test_loaders[128].dataset
+test_samples = test_loaders[16].dataset
 
 fig = plt.figure(figsize=(7, 7))
 for index in range(3):
@@ -128,21 +135,21 @@ for index in range(3):
     out = model(x.unsqueeze(0))
 
     ax = fig.add_subplot(3, 3, index*3 + 1)
-    ax.imshow(x[0], cmap='gray')
+    ax.imshow(x[0].cpu().numpy(), cmap='gray')
     if index == 0: 
         ax.set_title('Input x')
     plt.xticks([], [])
     plt.yticks([], [])
 
     ax = fig.add_subplot(3, 3, index*3 + 2)
-    ax.imshow(y.squeeze())
+    ax.imshow(y.cpu().numpy().squeeze())
     if index == 0: 
         ax.set_title('Ground-truth y')
     plt.xticks([], [])
     plt.yticks([], [])
 
     ax = fig.add_subplot(3, 3, index*3 + 3)
-    ax.imshow(out.squeeze().detach().numpy())
+    ax.imshow(out.squeeze().detach().cpu().numpy())
     if index == 0: 
         ax.set_title('Model prediction')
     plt.xticks([], [])
@@ -151,6 +158,9 @@ for index in range(3):
 fig.suptitle('Inputs, ground-truth output and prediction (16x16).', y=0.98)
 plt.tight_layout()
 fig.show()
+fig.savefig("sino_outputs_burger_16.png")
+
+
 
 
 # %%

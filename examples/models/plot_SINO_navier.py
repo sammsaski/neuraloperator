@@ -28,8 +28,8 @@ device = 'cpu'
 # %%
 # Let's load the small Darcy-flow dataset. 
 train_loader, test_loaders, data_processor = load_navier_stokes_pt(
-        n_train=1000, batch_size=32, 
-        test_resolutions=[128], n_tests=[200],
+        n_train=100, batch_size=32, 
+        test_resolutions=[128], n_tests=[20],
         test_batch_sizes=[32],
 )
 data_processor = data_processor.to(device)
@@ -89,7 +89,7 @@ trainer = Trainer(model=model, n_epochs=20,
                   device=device,
                   data_processor=data_processor,
                   wandb_log=False,
-                  eval_interval=3,
+                  eval_interval=1,
                   use_distributed=False,
                   verbose=True)
 

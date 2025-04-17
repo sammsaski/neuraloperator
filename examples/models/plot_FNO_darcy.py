@@ -22,7 +22,7 @@ from neuralop.data.datasets import load_darcy_flow_small
 from neuralop.utils import count_model_params
 from neuralop import LpLoss, H1Loss
 
-device = 'cpu'
+device = 'cuda'
 
 
 # %%
@@ -89,7 +89,7 @@ trainer = Trainer(model=model, n_epochs=20,
                   device=device,
                   data_processor=data_processor,
                   wandb_log=False,
-                  eval_interval=3,
+                  eval_interval=1,
                   use_distributed=False,
                   verbose=True)
 
@@ -128,21 +128,21 @@ for index in range(3):
     out = model(x.unsqueeze(0))
 
     ax = fig.add_subplot(3, 3, index*3 + 1)
-    ax.imshow(x[0], cmap='gray')
+    ax.imshow(x[0].cpu().numpy(), cmap='gray')
     if index == 0: 
         ax.set_title('Input x')
     plt.xticks([], [])
     plt.yticks([], [])
 
     ax = fig.add_subplot(3, 3, index*3 + 2)
-    ax.imshow(y.squeeze())
+    ax.imshow(y.cpu().numpy().squeeze())
     if index == 0: 
         ax.set_title('Ground-truth y')
     plt.xticks([], [])
     plt.yticks([], [])
 
     ax = fig.add_subplot(3, 3, index*3 + 3)
-    ax.imshow(out.squeeze().detach().numpy())
+    ax.imshow(out.squeeze().detach().cpu().numpy())
     if index == 0: 
         ax.set_title('Model prediction')
     plt.xticks([], [])
@@ -151,6 +151,7 @@ for index in range(3):
 fig.suptitle('Inputs, ground-truth output and prediction (16x16).', y=0.98)
 plt.tight_layout()
 fig.show()
+fig.savefig("fno_outputs_darcy_16.png")
 
 
 # %%
@@ -175,21 +176,21 @@ for index in range(3):
     out = model(x.unsqueeze(0))
 
     ax = fig.add_subplot(3, 3, index*3 + 1)
-    ax.imshow(x[0], cmap='gray')
+    ax.imshow(x[0].cpu().numpy(), cmap='gray')
     if index == 0: 
         ax.set_title('Input x')
     plt.xticks([], [])
     plt.yticks([], [])
 
     ax = fig.add_subplot(3, 3, index*3 + 2)
-    ax.imshow(y.squeeze())
+    ax.imshow(y.cpu().numpy().squeeze())
     if index == 0: 
         ax.set_title('Ground-truth y')
     plt.xticks([], [])
     plt.yticks([], [])
 
     ax = fig.add_subplot(3, 3, index*3 + 3)
-    ax.imshow(out.squeeze().detach().numpy())
+    ax.imshow(out.squeeze().detach().cpu().numpy())
     if index == 0: 
         ax.set_title('Model prediction')
     plt.xticks([], [])
@@ -198,6 +199,7 @@ for index in range(3):
 fig.suptitle('Inputs, ground-truth output and prediction (32x32).', y=0.98)
 plt.tight_layout()
 fig.show()
+fig.savefig("fno_outputs_darcy_32.png")
 
 # %%
 # We only trained the model on data at a resolution of 16x16, and with no modifications 
