@@ -4,6 +4,8 @@ from typing import Union
 import sys
 import warnings
 
+import time
+
 import torch
 from torch.cuda import amp
 from torch import nn
@@ -264,11 +266,18 @@ class Trainer:
         # track number of training examples in batch
         self.n_samples = 0
 
+        start = time.time()
+
         for idx, sample in enumerate(train_loader):
+            print(idx)
             loss = self.train_one_batch(idx, sample, training_loss)
+            # t0 = time.time()
+            # print(f'After computing loss: {t0 - start}')
             loss.backward()
             # print(self.model.sino_blocks[0].S_m.grad) PRINT GRADIENT
             self.optimizer.step()
+            # t1 = time.time()
+            # print(f'After backprop: {t1 - start}')
 
             train_err += loss.item()
             with torch.no_grad():

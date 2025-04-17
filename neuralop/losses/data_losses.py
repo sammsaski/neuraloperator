@@ -435,13 +435,30 @@ class SmoothH1Loss(H1Loss):
         self.regularization_mode = regularization_mode
 
     def spline_smoothness_loss(self, S_m):
+        # FOR RBF
+        # if self.regularization_mode == "first":
+        #     diff = S_m[1:] - S_m[:-1]
+        #     return (diff**2).mean()
+        # elif self.regularization_mode == "second":
+        #     return ((S_m[2:] - 2 * S_m[1:-1] + S_m[:-2])**2).mean()
+        # else:
+        #     raise ValueError("Unknown regularization mode")
+
+        # for 2d b-spline
         if self.regularization_mode == "first":
-            diff = S_m[1:] - S_m[:-1]
-            return (diff**2).mean()
+            dx = S_m[1:, :] - S_m[:-1, :]
+            dy = S_m[:, 1:] - S_m[:, :-1]
+            return (dx**2).mean() + (dy**2).mean()
+        
         elif self.regularization_mode == "second":
-            return ((S_m[2:] - 2 * S_m[1:-1] + S_m[:-2])**2).mean()
+            dxx = S_m[2:, :] - 2 * S_m[1:-1, :] + S_m[:-2, :]
+            dyy = S_m[:, 2:] - 2 * S_m[:, 1:-1] + S_m[:, :-2]
+            return (dxx**2).mean() + (dyy**2).mean()
+        
         else:
             raise ValueError("Unknown regularization mode")
+
+
         
     def __call__(self, model, y_pred, y, quadrature=None, **kwargs):
         h1 = super().__call__(y_pred, y, quadrature, **kwargs)
@@ -456,7 +473,9 @@ class SmoothH1Loss(H1Loss):
 
             reg_loss = 0.0
             for layer in spline_layers:
-                reg_loss += self.spline_smoothness_loss(layer.S_m)
+                # reg_loss += self.spline_smoothness_loss(layer.S_m)
+                S_m = torch.outer(layer.S_m_x, layer.S_m_y)  # (K, K)
+                reg_loss += self.spline_smoothness_loss(S_m)
 
             return h1 + self.regularization_weight * reg_loss
 

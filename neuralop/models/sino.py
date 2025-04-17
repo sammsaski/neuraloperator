@@ -122,7 +122,7 @@ class SINO(BaseModel, name='SINO'):
             # for j, l in enumerate(layer.h_net):
                 # if isinstance(l, nn.Linear):
                     # print(f"Layer {j} weights:\n", l.weight.data)
-            layer.plot_and_save_spline(save_path="SPLINE_PLOTS/learned_spline.png")
+            # layer.plot_and_save_spline(save_path="SPLINE_PLOTS/learned_spline.png")
             x = x + layer(x)
 
 
