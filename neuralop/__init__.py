@@ -5,4 +5,4 @@ from .models import get_model
 from .data import datasets, transforms
 from . import mpu
 from .training import Trainer
-from .losses import LpLoss, H1Loss, BurgersEqnLoss, ICLoss, WeightedSumLoss, SmoothH1Loss
+from .losses import LpLoss, H1Loss, BurgersEqnLoss, ICLoss, WeightedSumLoss, SmoothH1Loss, SmoothH1Loss1D

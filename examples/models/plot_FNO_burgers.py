@@ -87,7 +87,7 @@ sys.stdout.flush()
 
 # %% 
 # Create the trainer:
-trainer = Trainer(model=model, n_epochs=2,
+trainer = Trainer(model=model, n_epochs=20,
                   device=device,
                   data_processor=data_processor,
                   wandb_log=False,
@@ -106,39 +106,6 @@ trainer.train(train_loader=train_loader,
               regularizer=False, 
               training_loss=train_loss,
               eval_losses=eval_losses)
-
-# %%
-# .. _plot_preds :
-# Visualizing predictions
-# ------------------------
-# Let's take a look at what our model's predicted outputs look like. 
-# Again note that in this example, we train on a very small resolution for
-# a very small number of epochs.
-# In practice, we would train at a larger resolution, on many more samples.
-
-test_samples = test_loaders[16].dataset
-
-fig = plt.figure(figsize=(7, 7))
-for index in range(3):
-    data = test_samples[index]
-    data['x'] = data['x'].unsqueeze(0)
-    data['y'] = data['y'].unsqueeze(0)
-    data = data_processor.preprocess(data, batched=False)
-    # Input x
-    x = data['x']
-    # Ground-truth
-    y = data['y']
-    # Model prediction
-    # out = model(x.unsqueeze(0))
-    out = model(x)
-
-    
-fig.suptitle('Inputs, ground-truth output and prediction (16x16).', y=0.98)
-plt.tight_layout()
-fig.show()
-fig.savefig("fno_outputs_burger_16.png")
-
-
 
 
 # %%

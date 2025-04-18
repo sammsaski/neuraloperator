@@ -11,4 +11,4 @@ from .uqno import UQNO
 from .fnogno import FNOGNO
 from .gino import GINO
 from .base_model import get_model
-from .sino import SINO
+from .sino import SINO, SINO1D

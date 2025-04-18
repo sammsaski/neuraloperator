@@ -4,6 +4,8 @@ from typing import Union
 import sys
 import warnings
 
+import matplotlib.pyplot as plt
+
 import time
 
 import torch
@@ -20,7 +22,7 @@ except ModuleNotFoundError:
     wandb_available = False
 
 import neuralop.mpu.comm as comm
-from neuralop.losses import LpLoss, SmoothH1Loss
+from neuralop.losses import LpLoss, SmoothH1Loss, SmoothH1Loss1D
 from .training_state import load_training_state, save_training_state
 
 
@@ -208,7 +210,7 @@ class Trainer:
         
         for epoch in range(self.start_epoch, self.n_epochs):
             train_err, avg_loss, avg_lasso_loss, epoch_train_time =\
-                  self.train_one_epoch(epoch, train_loader, training_loss)
+                  self.train_one_epoch(epoch, train_loader, training_loss, test_loaders, epoch)
             epoch_metrics = dict(
                 train_err=train_err,
                 avg_loss=avg_loss,
@@ -236,7 +238,7 @@ class Trainer:
 
         return epoch_metrics
 
-    def train_one_epoch(self, epoch, train_loader, training_loss):
+    def train_one_epoch(self, epoch, train_loader, training_loss, test_loaders, epoch_num):
         """train_one_epoch trains self.model on train_loader
         for one epoch and returns training metrics
 
@@ -455,7 +457,7 @@ class Trainer:
             with torch.autocast(device_type=self.autocast_device_type):
                 loss += training_loss(out, **sample)
         else:
-            if isinstance(training_loss, SmoothH1Loss):
+            if isinstance(training_loss, SmoothH1Loss) or isinstance(training_loss, SmoothH1Loss1D):
                 loss += training_loss(self.model, out, **sample)
             else:
                 loss += training_loss(out, **sample)
@@ -508,7 +510,7 @@ class Trainer:
         eval_step_losses = {}
 
         for loss_name, loss in eval_losses.items():
-            if isinstance(loss, SmoothH1Loss):
+            if isinstance(loss, SmoothH1Loss) or isinstance(loss, SmoothH1Loss1D):
                 val_loss = loss(self.model, out, **sample)
             else:
                 val_loss = loss(out, **sample)
