@@ -22,7 +22,8 @@ from neuralop.data.datasets import load_mini_burgers_1dtime
 from neuralop.utils import count_model_params
 from neuralop import LpLoss, H1Loss, SmoothH1Loss
 
-device = 'cuda'
+# device = 'cuda'
+device = 'cpu'
 
 
 # %%
@@ -86,7 +87,7 @@ sys.stdout.flush()
 
 # %% 
 # Create the trainer:
-trainer = Trainer(model=model, n_epochs=20,
+trainer = Trainer(model=model, n_epochs=2,
                   device=device,
                   data_processor=data_processor,
                   wandb_log=False,
@@ -120,35 +121,18 @@ test_samples = test_loaders[16].dataset
 fig = plt.figure(figsize=(7, 7))
 for index in range(3):
     data = test_samples[index]
+    data['x'] = data['x'].unsqueeze(0)
+    data['y'] = data['y'].unsqueeze(0)
     data = data_processor.preprocess(data, batched=False)
     # Input x
     x = data['x']
     # Ground-truth
     y = data['y']
     # Model prediction
-    out = model(x.unsqueeze(0))
+    # out = model(x.unsqueeze(0))
+    out = model(x)
 
-    ax = fig.add_subplot(3, 3, index*3 + 1)
-    ax.imshow(x[0].cpu().numpy(), cmap='gray')
-    if index == 0: 
-        ax.set_title('Input x')
-    plt.xticks([], [])
-    plt.yticks([], [])
-
-    ax = fig.add_subplot(3, 3, index*3 + 2)
-    ax.imshow(y.cpu().numpy().squeeze())
-    if index == 0: 
-        ax.set_title('Ground-truth y')
-    plt.xticks([], [])
-    plt.yticks([], [])
-
-    ax = fig.add_subplot(3, 3, index*3 + 3)
-    ax.imshow(out.squeeze().detach().cpu().numpy())
-    if index == 0: 
-        ax.set_title('Model prediction')
-    plt.xticks([], [])
-    plt.yticks([], [])
-
+    
 fig.suptitle('Inputs, ground-truth output and prediction (16x16).', y=0.98)
 plt.tight_layout()
 fig.show()
